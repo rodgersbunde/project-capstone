@@ -1,50 +1,90 @@
-
 import streamlit as st
-import pickle
+from surprise import Dataset, Reader, SVD
+import pandas as pd
 
-# Load recipes from pickle file
-with open('top_recommendations.pkl', 'rb') as f:
-    top_recommendations = pickle.load(f)
+# Load the dataset
+dt = pd.read_csv('final_data.csv')
 
 # Define Streamlit app content
 def streamlit_app():
-    st.title('Recipe Search App')
 
-    # Add a text input for searching recipes
-    search_recipe = st.text_input('Enter a recipe name:')
+    # Load collaborative filtering model
+    reader = Reader(rating_scale=(0, 100))
+    data = Dataset.load_from_df(dt[['user_id', 'recipe_code', 'ratings']], reader)
+    trainset = data.build_full_trainset()
+    algo = SVD()
+    algo.fit(trainset)
 
-    # Handle search
-    if search_recipe:
-        if search_recipe in top_recommendations:
-            ingredients, rating = top_recommendations[search_recipe]
-            st.write(f"Recipe: {search_recipe}")
-            st.write(f"Ingredients: {', '.join(ingredients)}")
-            st.write(f"Rating: {rating}")
-            
-            # Render a template
-            st.markdown("""
-            ## Recipe Template
+    # Function to get recommendations for a user
+    def get_recommendations(user_id, dt):
+        user_recipe = dt[dt['user_id'] == user_id]['recipe_code'].unique()
+        recommended_recipe = []
+        for recipe_code in dt['recipe_code'].unique():
+            if recipe_code not in user_recipe:
+                predicted_ratings = algo.predict(user_id, recipe_code).est
+                recommended_recipe.append((recipe_code, predicted_ratings))
+        recommended_recipe.sort(key=lambda x: x[1], reverse=True)
+        return recommended_recipe
+    # Set page width and background color
+    st.set_page_config(page_title="Recipe Recommendation App", layout="wide", page_icon="🥘", initial_sidebar_state="expanded")
 
-            <div style="background-color:#f5f5f5; padding:10px">
-            <h3>Recipe: {recipe_name}</h3>
-            <p><strong>Ingredients:</strong> {ingredient_list}</p>
-            <p><strong>Rating:</strong> {recipe_rating}</p>
-            </div>
-            """.format(recipe_name=search_recipe, ingredient_list=', '.join(ingredients), recipe_rating=rating))
-            
+    # Create a Streamlit app
+    st.title('Recipe Recommendation App')
+    st.markdown(
+        """
+        <style>
+        .css-1aumxhk {
+            background-color: #f0f2f6;
+        }
+        .css-1aumxhk a {
+            color: #333;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # Create navigation sidebar with custom colors
+    st.sidebar.title('Navigation')
+    page = st.sidebar.radio('Go to', ['Home', 'About', 'Results'])
+
+    # Display content based on selected page
+    if page == 'Home':
+        st.write('Welcome to Recipe Search App!')
+        st.write('Use the navigation on the left to explore.')
+    elif page == 'About':
+        st.write('This app helps you search for recipes.')
+        st.write('It uses a machine learning model to recommend recipes based on your input.')
+    elif page == 'Results':
+        st.title('Recipe Search Results')
+
+        # Add text inputs for entering user ID and recipe name
+        user_id = st.text_input('Enter User ID:')
+        recipe_name = st.text_input('Enter Recipe Name:')
+
+        # Get recommendations for the user
+        if user_id and recipe_name:
+            recommended_recipe = get_recommendations(int(user_id), dt)
+            for recipe_code, predicted_rating in recommended_recipe[:10]:
+                recipe_name = dt[dt['recipe_code'] == recipe_code]['recipe_name'].iloc[0]
+                ingredients = dt[dt['recipe_code'] == recipe_code]['ingredients'].iloc[0]
+                # Check if cooking instructions exist before accessing them
+        if not dt[dt['recipe_code'] == recipe_code]['cooking_instructions'].empty:
+            cooking_instructions = dt[dt['recipe_code'] == recipe_code]['cooking_instructions'].iloc[0]
+            st.write(f"Recipe Name: {recipe_name}")
+            st.write(f"Predicted Rating: {predicted_rating}")
+            st.write(f"Ingredients: {ingredients}")
+            st.write(f"Cooking Instructions: {cooking_instructions}")
         else:
-            st.write("Recipe not found.")
-            
-              
-
+            st.write(f"Recipe Name: {recipe_name}")
+            st.write(f"Predicted Rating: {predicted_rating}")
+            st.write(f"Ingredients: {ingredients}")
+            st.write("Cooking Instructions not available for this recipe.")
+                
+# Run the Streamlit app
 if __name__ == "__main__":
     streamlit_app()
 
-
-
-
-
-
-
-
-
+    
+    
+    
