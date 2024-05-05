@@ -59,12 +59,12 @@ def streamlit_app():
             return recommended_recipe
 
         # Add text inputs for entering user ID and recipe name
-        user_id = st.text_input('Enter User ID:')
+        #user_id = st.text_input('Enter User ID:')
         recipe_name = st.text_input('Enter Recipe Name:')
 
         # Get recommendations for the user
-        if user_id and recipe_name:
-            recommended_recipe = get_recommendations(int(user_id), df)
+        if  recipe_name:
+            recommended_recipe = get_recommendations(recipe_name, df)
             for recipe_code, predicted_rating in recommended_recipe[:10]:
                 recipe_name = df[df['recipe_code'] == recipe_code]['recipe_name'].iloc[0]
                 ingredients = df[df['recipe_code'] == recipe_code]['ingredients'].iloc[0]
