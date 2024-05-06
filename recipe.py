@@ -61,7 +61,7 @@ def streamlit_app():
         # Add text inputs for entering user ID and recipe name
         #user_id = st.text_input('Enter User ID:')
         recipe_name = st.text_input('Enter Recipe Name:')
-
+        search_button = st.button('Search')
         # Get recommendations for the user
         if  recipe_name:
             recommended_recipe = get_recommendations(recipe_name, df)
