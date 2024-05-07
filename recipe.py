@@ -35,8 +35,9 @@ def streamlit_app():
         st.write('Welcome to Recipe Search App!')
         st.write('Use the navigation on the left to explore.')
     elif page == 'About':
-        st.write('This app helps you search for recipes.')
-        st.write('It uses a machine learning model to recommend recipes based on your input.')
+        st.write('This app helps users to search for recipes by key in `Recipe Name`.')
+        st.write('Key in `User ID` which is any integer.')
+        st.write('It uses a machine learning model to recommend top 10 recipes based on high ratings.')
     elif page == 'Results':
         st.title('Recipe Search Results')
 
