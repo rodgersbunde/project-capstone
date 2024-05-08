@@ -73,6 +73,7 @@ def streamlit_app():
                 if 'cooking_instructions' in df.columns and not df[df['recipe_code'] == recipe_code]['cooking_instructions'].empty:
                     cooking_instructions = df[df['recipe_code'] == recipe_code]['cooking_instructions'].iloc[0]
                     st.write(f"Recipe Name: {recipe_name}")
+                    
                     st.write(f"Predicted Rating: {predicted_rating}")
                     st.write(f"Ingredients: {ingredients}")
                     st.write(f"Cooking Instructions: {cooking_instructions}")
