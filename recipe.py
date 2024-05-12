@@ -44,15 +44,24 @@ def streamlit_app():
         st.write('Welcome to Recipe Search App!')
         st.write('Use the navigation on the left to explore.')
     elif page == 'About':
+<<<<<<< HEAD
         st.write('This app helps you search for recipes.')
         st.write('The app returns recipes based on search terms if recipe name is not there it will return recipe name not found')
         st.write('It uses a machine learning model to recommend recipes based on your input.')
     elif page == 'Search':
         st.title('Recipe Search')
+=======
+        st.write('This app helps users to search for recipes by key in `Recipe Name`.')
+        st.write('Key in `User ID` which is any integer.')
+        st.write('It uses a machine learning model to recommend top 10 recipes based on high ratings.')
+    elif page == 'Results':
+        st.title('Recipe Search Results')
+>>>>>>> 42eb58c8ded7649dc650010f83e7f2acfc1aeccc
 
         # Add text input for entering search term
         search_term = st.text_input('Enter Search Term:')
         search_button = st.button('Search')
+<<<<<<< HEAD
 
         # Initialize a session state to keep track of displayed recipe names
         if 'displayed_recipe_names' not in st.session_state:
@@ -72,6 +81,27 @@ def streamlit_app():
                         st.write('---')
             else:
                 st.write("Recipe name not found.")
+=======
+        # Get recommendations for the user
+        if user_id and recipe_name:
+            recommended_recipe = get_recommendations(int(user_id), df)
+            for recipe_code, predicted_rating in recommended_recipe[:10]:
+                recipe_name = df[df['recipe_code'] == recipe_code]['recipe_name'].iloc[0]
+                ingredients = df[df['recipe_code'] == recipe_code]['ingredients'].iloc[0]
+                # Check if cooking instructions exist before accessing them
+                if 'cooking_instructions' in df.columns and not df[df['recipe_code'] == recipe_code]['cooking_instructions'].empty:
+                    cooking_instructions = df[df['recipe_code'] == recipe_code]['cooking_instructions'].iloc[0]
+                    st.write(f"Recipe Name: {recipe_name}")
+                    
+                    st.write(f"Predicted Rating: {predicted_rating}")
+                    st.write(f"Ingredients: {ingredients}")
+                    st.write(f"Cooking Instructions: {cooking_instructions}")
+                else:
+                    st.write(f"Recipe Name: {recipe_name}")
+                    st.write(f"Predicted Rating: {predicted_rating}")
+                    st.write(f"Ingredients: {ingredients}")
+                    st.write("Cooking Instructions not available for this recipe.")
+>>>>>>> 42eb58c8ded7649dc650010f83e7f2acfc1aeccc
 
 # Run the Streamlit app
 if __name__ == "__main__":
