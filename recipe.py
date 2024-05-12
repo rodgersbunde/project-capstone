@@ -1,25 +1,34 @@
 import streamlit as st
 from surprise import Dataset, Reader, SVD
 import pandas as pd
+import openai
 
 # Load the dataset
 df = pd.read_csv('final_data.csv')
 
+# Set up OpenAI API
+openai.api_key = "your_openai_api_key"
+
 # Define Streamlit app content
 def streamlit_app():
     # Set page width and background color
-    st.set_page_config(page_title="Recipe Recommendation App", layout="wide", page_icon="🥘", initial_sidebar_state="expanded")
+    st.set_page_config(page_title="Recipe Search App", layout="wide", page_icon="🥘", initial_sidebar_state="expanded")
 
     # Create a Streamlit app
-    st.title('Recipe Recommendation App')
+    st.title('Recipe Search App')
     st.markdown(
         """
         <style>
+        body {
+            background-color: #000000; /* Set background color to black */
+            color: #FFFFFF; /* Set text color to white */
+        }
         .css-1aumxhk {
-            background-color: #f0f2f6;
+            background-color: #000000; /* Set sidebar background color to black */
+            color: #FFFFFF; /* Set sidebar text color to white */
         }
         .css-1aumxhk a {
-            color: #333;
+            color: #FFFFFF; /* Set sidebar link color to white */
         }
         </style>
         """,
@@ -28,7 +37,7 @@ def streamlit_app():
 
     # Create navigation sidebar with custom colors
     st.sidebar.title('Navigation')
-    page = st.sidebar.radio('Go to', ['Home', 'About', 'Results'])
+    page = st.sidebar.radio('Go to', ['Home', 'About', 'Search'])
 
     # Display content based on selected page
     if page == 'Home':
@@ -36,50 +45,33 @@ def streamlit_app():
         st.write('Use the navigation on the left to explore.')
     elif page == 'About':
         st.write('This app helps you search for recipes.')
+        st.write('The app returns recipes based on search terms if recipe name is not there it will return recipe name not found')
         st.write('It uses a machine learning model to recommend recipes based on your input.')
-    elif page == 'Results':
-        st.title('Recipe Search Results')
+    elif page == 'Search':
+        st.title('Recipe Search')
 
-        # Load collaborative filtering model
-        reader = Reader(rating_scale=(0, 100))
-        data = Dataset.load_from_df(df[['user_id', 'recipe_code', 'ratings']], reader)
-        trainset = data.build_full_trainset()
-        algo = SVD()
-        algo.fit(trainset)
-
-        # Function to get recommendations for a user
-        def get_recommendations(user_id, df):
-            user_recipe = df[df['user_id'] == user_id]['recipe_code'].unique()
-            recommended_recipe = []
-            for recipe_code in df['recipe_code'].unique():
-                if recipe_code not in user_recipe:
-                    predicted_ratings = algo.predict(user_id, recipe_code).est
-                    recommended_recipe.append((recipe_code, predicted_ratings))
-            recommended_recipe.sort(key=lambda x: x[1], reverse=True)
-            return recommended_recipe
-
-        # Add text inputs for entering user ID and recipe name
-        user_id = st.text_input('Enter User ID:')
-        recipe_name = st.text_input('Enter Recipe Name:')
+        # Add text input for entering search term
+        search_term = st.text_input('Enter Search Term:')
         search_button = st.button('Search')
-        # Get recommendations for the user
-        if user_id and recipe_name:
-            recommended_recipe = get_recommendations(int(user_id), df)
-            for recipe_code, predicted_rating in recommended_recipe[:10]:
-                recipe_name = df[df['recipe_code'] == recipe_code]['recipe_name'].iloc[0]
-                ingredients = df[df['recipe_code'] == recipe_code]['ingredients'].iloc[0]
-                # Check if cooking instructions exist before accessing them
-                if 'cooking_instructions' in df.columns and not df[df['recipe_code'] == recipe_code]['cooking_instructions'].empty:
-                    cooking_instructions = df[df['recipe_code'] == recipe_code]['cooking_instructions'].iloc[0]
-                    st.write(f"Recipe Name: {recipe_name}")
-                    st.write(f"Predicted Rating: {predicted_rating}")
-                    st.write(f"Ingredients: {ingredients}")
-                    st.write(f"Cooking Instructions: {cooking_instructions}")
-                else:
-                    st.write(f"Recipe Name: {recipe_name}")
-                    st.write(f"Predicted Rating: {predicted_rating}")
-                    st.write(f"Ingredients: {ingredients}")
-                    st.write("Cooking Instructions not available for this recipe.")
+
+        # Initialize a session state to keep track of displayed recipe names
+        if 'displayed_recipe_names' not in st.session_state:
+            st.session_state.displayed_recipe_names = set()
+
+        # Filter recipes based on search term and display the results
+        if search_term:
+            filtered_recipe = df[df['recipe_name'].str.contains(search_term, case=False)]
+            if not filtered_recipe.empty:
+                for _, row in filtered_recipe.iterrows():
+                    if row['recipe_name'] not in st.session_state.displayed_recipe_names:
+                        st.session_state.displayed_recipe_names.add(row['recipe_name'])  # Add recipe name to displayed recipe names
+                        st.markdown(f"**Recipe Name:** {row['recipe_name']}")
+                        st.write(f"**Predicted Rating:** {row['ratings']}")
+                        st.markdown(f"**Ingredients:** {row['ingredients']}")
+                        st.markdown(f"**Cooking Instructions:** {row['cooking_instructions']}")
+                        st.write('---')
+            else:
+                st.write("Recipe name not found.")
 
 # Run the Streamlit app
 if __name__ == "__main__":
