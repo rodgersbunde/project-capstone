@@ -1,11 +1,14 @@
 import streamlit as st
 from surprise import Dataset, Reader, SVD
 import pandas as pd
-import openai
+# import openai
+import asyncio
+from functools import lru_cache
+# import os
 
-# Set your OpenAI API key here
-api_key = "your_openai_api_key"
-openai.api_key = api_key
+# Ensure the OpenAI API key is set in your environment variables
+# api_key = os.getenv('OPENAI_API_KEY')
+# openai.api_key = api_key
 
 # Load the dataset
 df = pd.read_csv('final_data.csv')
@@ -17,30 +20,17 @@ trainset = data.build_full_trainset()
 algo = SVD()
 algo.fit(trainset)
 
-# Function to generate recipe using OpenAI
-def generate_recipe(search_term):
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "user", "content": f"Generate a recipe for {search_term}"}
-        ],
-        max_tokens=1024,
-        n=1,
-        stop=None,
-    )
-    generated_recipe = response['choices'][0]['message']['content']
-    return generated_recipe
-
 # Define Streamlit app content
 def streamlit_app():
     # Set page width and background color
-    st.markdown(
+    st.write(
         """
         <style>
-        body {
-            background-image: url('https://img.freepik.com/premium-photo/food-cooking-background-stone-texture-with-sea-salt-pepper-garlic-parsley-light-grey-abstract-food-background-empty-space-text-can-be-used-food-posters-design-menu-top-view_253362-16400.jpg');
+        .stApp {
+            background-image: url('https://images.pexels.com/photos/775032/pexels-photo-775032.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2');
             background-size: cover;
             background-position: center;
+            background-attachment: fixed;
         }
         </style>
         """,
@@ -65,10 +55,6 @@ def streamlit_app():
     elif page == 'Search':
         st.title('Recipe Search')
 
-        # Add text input for entering search term
-        search_term = st.text_input('Enter Search Term:')
-        search_button = st.button('Search')
-
         # Add ingredient search input
         ingredient_search = st.text_input('Search by Ingredients (comma separated):')
         ingredient_search_button = st.button('Search by Ingredients')
@@ -77,24 +63,6 @@ def streamlit_app():
         if 'displayed_recipe_names' not in st.session_state:
             st.session_state.displayed_recipe_names = set()
 
-        # Filter recipes based on search term and display the results
-        if search_term and search_button:
-            with st.spinner('Searching for recipes...'):
-                filtered_recipe = df[df['recipe_name'].str.contains(search_term, case=False)]
-                if not filtered_recipe.empty:
-                    for _, row in filtered_recipe.iterrows():
-                        if row['recipe_name'] not in st.session_state.displayed_recipe_names:
-                            st.session_state.displayed_recipe_names.add(row['recipe_name'])
-                            st.markdown(f"**Recipe Name:** {row['recipe_name']}")
-                            st.write(f"**Predicted Rating:** {algo.predict('user_id', row['recipe_code']).est}")
-                            st.markdown(f"**Ingredients:** {row['ingredients']}")
-                            st.markdown(f"**Cooking Instructions:** {row['cooking_instructions']}")
-                            st.write('---')
-                else:
-                    st.write("Recipe name not found. Generating a new recipe...")
-                    generated_recipe = generate_recipe(search_term)
-                    st.write(generated_recipe)
-
         # Filter recipes based on ingredients and display the results
         if ingredient_search and ingredient_search_button:
             with st.spinner('Searching for recipes...'):
@@ -102,18 +70,21 @@ def streamlit_app():
                 filtered_recipes = df[df['ingredients'].str.contains('|'.join(ingredients), case=False, na=False)]
 
                 if not filtered_recipes.empty:
-                    for _, row in filtered_recipes.iterrows():
-                        if row['recipe_name'] not in st.session_state.displayed_recipe_names:
-                            st.session_state.displayed_recipe_names.add(row['recipe_name'])
-                            st.markdown(f"**Recipe Name:** {row['recipe_name']}")
-                            st.write(f"**Predicted Rating:** {algo.predict('user_id', row['recipe_code']).est}")
-                            st.markdown(f"**Ingredients:** {row['ingredients']}")
-                            st.markdown(f"**Cooking Instructions:** {row['cooking_instructions']}")
+                    recipe_codes = filtered_recipes['recipe_code'].tolist()
+                    predictions = algo.test([(None, code, None) for code in recipe_codes])
+                    predictions.sort(key=lambda x: x.est, reverse=True)
+
+                    for prediction in predictions:
+                        recipe_name = df.loc[df['recipe_code'] == prediction.iid]['recipe_name'].values[0]
+                        if recipe_name not in st.session_state.displayed_recipe_names:
+                            st.session_state.displayed_recipe_names.add(recipe_name)
+                            st.markdown(f"**Recipe Name:** {recipe_name}")
+                            st.write(f"**Predicted Rating:** {prediction.est}")
+                            st.markdown(f"**Ingredients:** {df.loc[df['recipe_code'] == prediction.iid]['ingredients'].values[0]}")
+                            st.markdown(f"**Cooking Instructions:** {df.loc[df['recipe_code'] == prediction.iid]['cooking_instructions'].values[0]}")
                             st.write('---')
                 else:
-                    st.write("No recipes found with the given ingredients. Generating a new recipe...")
-                    generated_recipe = generate_recipe(", ".join(ingredients))
-                    st.write(generated_recipe)
+                    st.write("No recipes found with the given ingredients.")
 
 # Run the Streamlit app
 if __name__ == "__main__":
