@@ -1,6 +1,7 @@
 import streamlit as st
 from surprise import Dataset, Reader, SVD
 import pandas as pd
+import numpy as np
 # import openai
 import asyncio
 from functools import lru_cache
